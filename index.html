@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Roll Call | Twitter Attendance Register</title>
+    <meta
+      name="description"
+      content="A simple Twitter attendance directory with live date, day, roll numbers, and one-time present marking."
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <div class="ambient ambient-left"></div>
+      <div class="ambient ambient-right"></div>
+
+      <header class="topbar">
+        <a class="brand" href="#register">
+          <span class="brand-mark"></span>
+          Roll Call
+        </a>
+        <p class="topbar-note">Twitter users only. One handle, one roll number, permanently.</p>
+      </header>
+
+      <main class="hero">
+        <section class="hero-copy">
+          <p class="eyebrow">Daily attendance register</p>
+          <h1>Mark yourself present before the next handle takes your roll number.</h1>
+          <p class="lede">
+            A simple attendance board for Twitter communities. Open the page, check the running
+            directory, claim the next roll number once, and stay on the register permanently.
+          </p>
+
+          <div class="hero-meta">
+            <div class="meta-card">
+              <span class="meta-label">Today</span>
+              <strong id="current-day">Wednesday</strong>
+              <span id="current-date">March 11, 2026</span>
+            </div>
+            <div class="meta-card">
+              <span class="meta-label">Status</span>
+              <strong id="attendance-count">0 in directory</strong>
+              <span id="next-roll">Next roll no. 01</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="register-panel" id="register">
+          <div class="panel-heading">
+            <div>
+              <p class="panel-kicker">Attendance register</p>
+              <h2>Today’s list</h2>
+            </div>
+            <span class="panel-stamp">Open</span>
+          </div>
+
+          <div class="register-summary">
+            <div>
+              <span class="summary-label">Day</span>
+              <strong id="summary-day">Wednesday</strong>
+            </div>
+            <div>
+              <span class="summary-label">Date</span>
+              <strong id="summary-date">11 March 2026</strong>
+            </div>
+            <div>
+              <span class="summary-label">Your roll no.</span>
+              <strong id="roll-preview">01</strong>
+            </div>
+          </div>
+
+          <ol class="roll-list" id="roll-list" aria-live="polite"></ol>
+
+          <form class="register-form" id="attendance-form">
+            <label class="input-group" for="twitter-handle">
+              <span>Twitter username</span>
+              <input
+                id="twitter-handle"
+                name="twitter-handle"
+                type="text"
+                inputmode="text"
+                autocomplete="off"
+                placeholder="@yourhandle"
+                maxlength="16"
+                required
+              />
+            </label>
+
+            <label class="input-group" for="attendance-status">
+              <span>Attendance status</span>
+              <select id="attendance-status" name="attendance-status" required>
+                <option value="">Select status</option>
+                <option value="present">Present</option>
+              </select>
+            </label>
+
+            <button class="present-button" type="submit">Mark Present</button>
+            <p class="helper-text">Use a valid Twitter handle. Letters, numbers, underscores only.</p>
+            <p class="form-status" id="form-status" aria-live="polite"></p>
+          </form>
+        </section>
+      </main>
+
+      <section class="info-strip">
+        <article class="info-card">
+          <span>01</span>
+          <h3>Live day context</h3>
+          <p>The register automatically shows the current day and date based on the visitor’s browser.</p>
+        </article>
+        <article class="info-card">
+          <span>02</span>
+          <h3>Sequential roll numbers</h3>
+          <p>Each new attendee gets the next number in line, based on who has already marked present.</p>
+        </article>
+        <article class="info-card">
+          <span>03</span>
+          <h3>Permanent directory</h3>
+          <p>Once a handle is marked present, it stays in the register and keeps the same roll number.</p>
+        </article>
+      </section>
+    </div>
+
+    <template id="empty-state-template">
+      <li class="roll-empty">
+        <p>No one has signed in yet.</p>
+        <span>You will be roll no. 01.</span>
+      </li>
+    </template>
+
+    <script src="./script.js"></script>
+  </body>
+</html>
