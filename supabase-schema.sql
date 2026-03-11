@@ -10,15 +10,15 @@ alter table public.attendance_entries
 add column if not exists x_user_id text;
 
 update public.attendance_entries
-set status = 'stuck'
-where status in ('retarded', 'broken');
+set status = 'present'
+where status <> 'present';
 
 alter table public.attendance_entries
 drop constraint if exists attendance_entries_status_check;
 
 alter table public.attendance_entries
 add constraint attendance_entries_status_check
-check (status in ('present', 'stuck'));
+check (status = 'present');
 
 create unique index if not exists attendance_entries_handle_lower_unique
 on public.attendance_entries ((lower(handle)));

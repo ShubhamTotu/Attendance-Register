@@ -13,6 +13,7 @@ Run [supabase-schema.sql](/Users/shubhamtotu/Documents/Codex/supabase-schema.sql
 This migration:
 - adds `x_user_id` to `attendance_entries`
 - creates `x_auth_sessions`
+- converts all existing rows to `present`
 - removes anonymous insert access
 - keeps public reads open
 

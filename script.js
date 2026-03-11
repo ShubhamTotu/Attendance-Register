@@ -1,4 +1,3 @@
-const ALLOWED_STATUSES = new Set(["present", "stuck"]);
 const FIXED_ROLL_ENTRIES = [
   {
     handle: "@shubhamtotu",
@@ -42,7 +41,6 @@ const elements = {
   pageCredit: document.getElementById("page-credit"),
   rollList: document.getElementById("roll-list"),
   shareLink: document.getElementById("share-link"),
-  statusField: document.getElementById("attendance-status"),
   submitButton: document.querySelector(".submit-button"),
   template: document.getElementById("empty-state-template"),
   verifyAccount: document.getElementById("verify-account"),
@@ -53,11 +51,7 @@ function formatHandle(handle) {
 }
 
 function normalizeStatus(status) {
-  if (status === "broken" || status === "retarded") {
-    return "stuck";
-  }
-
-  return ALLOWED_STATUSES.has(status) ? status : "present";
+  return status === "present" ? "present" : "present";
 }
 
 function normalizeEntries(entries) {
@@ -201,10 +195,6 @@ function setSubmittingState(isSubmitting) {
     elements.submitButton.disabled = isSubmitting || !state.user;
     elements.submitButton.dataset.state = isSubmitting ? "submitting" : state.user ? "idle" : "disabled";
     elements.submitButton.textContent = isSubmitting ? "Checking tweet..." : "Mark attendance";
-  }
-
-  if (elements.statusField) {
-    elements.statusField.disabled = isSubmitting;
   }
 
   if (elements.verifyAccount) {
@@ -360,8 +350,6 @@ async function handleSubmit(event) {
     return;
   }
 
-  const status = "present";
-
   const existingEntry = getExistingDisplayEntry(state.user.handle);
 
   if (existingEntry && existingEntry.timestamp) {
@@ -375,9 +363,6 @@ async function handleSubmit(event) {
     clearStatus();
 
     const payload = await apiRequest("/api/attendance", {
-      body: {
-        status,
-      },
       method: "POST",
     });
 

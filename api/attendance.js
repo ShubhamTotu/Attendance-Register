@@ -13,7 +13,6 @@ function toPublicEntry(entry) {
     created_at: entry.created_at,
     handle: entry.handle,
     id: entry.id,
-    status: entry.status,
   };
 }
 
@@ -67,8 +66,6 @@ module.exports = async function handler(req, res) {
       return;
     }
 
-    const status = "present";
-
     const existingByHandle = await findAttendanceByHandle(currentHandle);
 
     if (existingByHandle) {
@@ -80,7 +77,7 @@ module.exports = async function handler(req, res) {
       }
 
       const updatedEntry = await updateAttendanceEntry(existingByHandle.id, {
-        status,
+        status: "present",
         x_user_id: session.x_user_id,
       });
 
@@ -93,7 +90,7 @@ module.exports = async function handler(req, res) {
 
     const createdEntry = await insertAttendanceEntry({
       handle: currentHandle,
-      status,
+      status: "present",
       xUserId: session.x_user_id,
     });
 
