@@ -1,8 +1,9 @@
 const crypto = require("crypto");
 
 const {
+  PUBLIC_SHARE_INTENT_URL,
   REQUIRED_TWEET_TEXT,
-  SHARE_INTENT_URL,
+  REQUIRED_TWEET_INTENT_URL,
 } = require("./constants");
 
 function assertXEnv() {
@@ -124,8 +125,9 @@ function hasRequiredTweet(tweets) {
 }
 
 module.exports = {
+  PUBLIC_SHARE_INTENT_URL,
   REQUIRED_TWEET_TEXT,
-  SHARE_INTENT_URL,
+  REQUIRED_TWEET_INTENT_URL,
   buildAuthorizeUrl,
   createCodeChallenge,
   createCodeVerifier,

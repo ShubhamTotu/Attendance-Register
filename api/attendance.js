@@ -9,8 +9,9 @@ const {
   updateAttendanceEntry,
 } = require("./_lib/supabase");
 const {
+  PUBLIC_SHARE_INTENT_URL,
   REQUIRED_TWEET_TEXT,
-  SHARE_INTENT_URL,
+  REQUIRED_TWEET_INTENT_URL,
   fetchRecentUserTweets,
   hasRequiredTweet,
 } = require("./_lib/x");
@@ -106,8 +107,9 @@ module.exports = async function handler(req, res) {
     if (!hasRequiredTweet(recentTweets)) {
       sendJson(res, 403, {
         message: "Share the exact post before marking attendance.",
+        publicShareUrl: PUBLIC_SHARE_INTENT_URL,
         requiredTweetText: REQUIRED_TWEET_TEXT,
-        shareUrl: SHARE_INTENT_URL,
+        requiredTweetIntentUrl: REQUIRED_TWEET_INTENT_URL,
       });
       return;
     }

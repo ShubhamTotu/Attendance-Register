@@ -17,7 +17,9 @@ const FIXED_HANDLE_SET = new Set(FIXED_ROLL_ENTRIES.map((entry) => entry.handle)
 const RESERVED_ROLLS = new Set(FIXED_ROLL_ENTRIES.map((entry) => entry.rollNumber));
 const POLLING_INTERVAL_MS = 3000;
 const REQUIRED_TWEET_TEXT = "I'm still Present. Are you?";
-const DEFAULT_SHARE_URL = `https://twitter.com/intent/tweet?text=${encodeURIComponent(REQUIRED_TWEET_TEXT)}`;
+const DEFAULT_PUBLIC_SHARE_URL = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
+  "I just marked my attendance. Did you?\n\nDo it at: https://timeline-attendance.vercel.app/",
+)}`;
 
 const state = {
   authLoaded: false,
@@ -25,7 +27,7 @@ const state = {
   isLoading: false,
   isSubmitting: false,
   pollerId: null,
-  shareUrl: DEFAULT_SHARE_URL,
+  shareUrl: DEFAULT_PUBLIC_SHARE_URL,
   user: null,
 };
 
@@ -212,7 +214,7 @@ function setSubmittingState(isSubmitting) {
 }
 
 function renderVerificationState() {
-  elements.shareLink.href = state.shareUrl || DEFAULT_SHARE_URL;
+  elements.shareLink.href = state.shareUrl || DEFAULT_PUBLIC_SHARE_URL;
 
   if (state.user) {
     elements.verifyAccount.classList.add("is-verified");
@@ -298,13 +300,13 @@ async function syncViewer() {
   try {
     const payload = await apiRequest("/api/auth/me");
     state.authLoaded = true;
-    state.shareUrl = payload.shareUrl || DEFAULT_SHARE_URL;
+    state.shareUrl = payload.publicShareUrl || DEFAULT_PUBLIC_SHARE_URL;
     state.user = payload.authenticated ? payload.user : null;
     renderVerificationState();
   } catch (error) {
     state.authLoaded = true;
     state.user = null;
-    state.shareUrl = DEFAULT_SHARE_URL;
+    state.shareUrl = DEFAULT_PUBLIC_SHARE_URL;
     renderVerificationState();
   }
 }
@@ -401,10 +403,8 @@ async function handleSubmit(event) {
       return;
     }
 
-    if (error.status === 403 && error.data?.shareUrl) {
-      state.shareUrl = error.data.shareUrl;
-      elements.shareLink.href = state.shareUrl;
-      setStatus(`Share "${REQUIRED_TWEET_TEXT}" exactly, then try again.`);
+    if (error.status === 403) {
+      setStatus(`Post "${REQUIRED_TWEET_TEXT}" exactly from your verified X account, then try again.`);
       return;
     }
 

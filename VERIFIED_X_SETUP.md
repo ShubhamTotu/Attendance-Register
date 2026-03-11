@@ -80,7 +80,7 @@ push the repo again or trigger a redeploy from Vercel.
 ## 5. How The Flow Works
 
 On the live site:
-- `Share` opens the exact post template
+- `Share` opens the public promo post template
 - `Verify with X` signs the user in
 - `Mark attendance` checks their recent X posts for the exact line
 - if found, the verified X handle is written to the register
