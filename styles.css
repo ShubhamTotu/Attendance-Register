@@ -176,6 +176,7 @@ a {
 
 .top-cta {
   justify-self: end;
+  border-radius: 999px;
   border-color: rgba(38, 43, 51, 0.18);
   background: linear-gradient(180deg, rgba(35, 39, 45, 0.94), rgba(16, 18, 22, 0.98));
   box-shadow:
