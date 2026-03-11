@@ -1,7 +1,4 @@
-const HANDLE_PATTERN = /^@?[A-Za-z0-9_]{1,15}$/;
 const ALLOWED_STATUSES = new Set(["present", "stuck"]);
-const DEFAULT_TABLE_NAME = "attendance_entries";
-const DEFAULT_POLLING_INTERVAL_MS = 3000;
 const FIXED_ROLL_ENTRIES = [
   {
     handle: "@shubhamtotu",
@@ -18,20 +15,18 @@ const FIXED_ROLL_ENTRIES = [
 ];
 const FIXED_HANDLE_SET = new Set(FIXED_ROLL_ENTRIES.map((entry) => entry.handle));
 const RESERVED_ROLLS = new Set(FIXED_ROLL_ENTRIES.map((entry) => entry.rollNumber));
-
-const config = window.CRYPTO_ATTENDANCE_CONFIG || {};
-const SUPABASE_URL = (config.supabaseUrl || "").replace(/\/+$/, "");
-const SUPABASE_ANON_KEY = config.supabaseAnonKey || "";
-const TABLE_NAME = config.attendanceTable || DEFAULT_TABLE_NAME;
-const POLLING_INTERVAL_MS = Math.max(config.pollingIntervalMs || DEFAULT_POLLING_INTERVAL_MS, 1000);
+const POLLING_INTERVAL_MS = 3000;
+const REQUIRED_TWEET_TEXT = "I'm still Present. Are you?";
+const DEFAULT_SHARE_URL = `https://twitter.com/intent/tweet?text=${encodeURIComponent(REQUIRED_TWEET_TEXT)}`;
 
 const state = {
+  authLoaded: false,
   entries: [],
-  isConfigured: Boolean(SUPABASE_URL && SUPABASE_ANON_KEY),
   isLoading: false,
   isSubmitting: false,
-  isSeedingFixedEntries: false,
   pollerId: null,
+  shareUrl: DEFAULT_SHARE_URL,
+  user: null,
 };
 
 const elements = {
@@ -42,17 +37,18 @@ const elements = {
   footerTrigger: document.getElementById("footer-trigger"),
   form: document.getElementById("attendance-form"),
   formStatus: document.getElementById("form-status"),
+  helperText: document.getElementById("helper-text"),
   pageCredit: document.getElementById("page-credit"),
   rollList: document.getElementById("roll-list"),
+  shareLink: document.getElementById("share-link"),
   statusField: document.getElementById("attendance-status"),
   submitButton: document.querySelector(".submit-button"),
   template: document.getElementById("empty-state-template"),
-  twitterHandle: document.getElementById("twitter-handle"),
+  verifyAccount: document.getElementById("verify-account"),
 };
 
 function formatHandle(handle) {
-  const normalized = handle.trim().replace(/^@+/, "").toLowerCase();
-  return `@${normalized}`;
+  return `@${String(handle || "").trim().replace(/^@+/, "").toLowerCase()}`;
 }
 
 function normalizeStatus(status) {
@@ -65,19 +61,14 @@ function normalizeStatus(status) {
 
 function normalizeEntries(entries) {
   return entries
-    .filter(
-      (entry) =>
-        entry &&
-        typeof entry.handle === "string" &&
-        HANDLE_PATTERN.test(entry.handle.trim()),
-    )
+    .filter((entry) => entry && typeof entry.handle === "string")
     .map((entry) => ({
       id: entry.id ?? null,
       handle: formatHandle(entry.handle),
       status: normalizeStatus(entry.status),
-      timestamp: entry.created_at || entry.timestamp || new Date().toISOString(),
+      timestamp: entry.created_at || entry.timestamp || null,
     }))
-    .sort((left, right) => new Date(left.timestamp) - new Date(right.timestamp));
+    .sort((left, right) => new Date(left.timestamp || 0) - new Date(right.timestamp || 0));
 }
 
 function getDisplayEntries(entries = state.entries) {
@@ -96,9 +87,8 @@ function getDisplayEntries(entries = state.entries) {
 
     assignedEntries.push({
       ...entry,
-      rollNumber: nextRollNumber,
       isFixed: false,
-      isVirtual: false,
+      rollNumber: nextRollNumber,
     });
 
     nextRollNumber += 1;
@@ -110,12 +100,9 @@ function getDisplayEntries(entries = state.entries) {
     return {
       ...(liveEntry || fixedEntry),
       handle: fixedEntry.handle,
-      status: liveEntry ? liveEntry.status : fixedEntry.status,
-      timestamp: liveEntry ? liveEntry.timestamp : null,
       rollNumber: fixedEntry.rollNumber,
-      fixedLabel: fixedEntry.fixedLabel,
-      isFixed: true,
-      isVirtual: !liveEntry,
+      status: normalizeStatus(liveEntry ? liveEntry.status : fixedEntry.status),
+      timestamp: liveEntry ? liveEntry.timestamp : null,
     };
   });
 
@@ -127,20 +114,22 @@ function getExistingDisplayEntry(handle, entries = state.entries) {
 }
 
 function formatDateParts(date = new Date()) {
-  const weekdayLong = new Intl.DateTimeFormat(undefined, { weekday: "long" }).format(date);
-  const fullDate = new Intl.DateTimeFormat(undefined, {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  }).format(date);
-
-  return { weekdayLong, fullDate };
+  return {
+    fullDate: new Intl.DateTimeFormat(undefined, {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }).format(date),
+    weekdayLong: new Intl.DateTimeFormat(undefined, {
+      weekday: "long",
+    }).format(date),
+  };
 }
 
 function formatJoinedDate(timestamp) {
   return new Intl.DateTimeFormat(undefined, {
-    month: "short",
     day: "numeric",
+    month: "short",
     year: "numeric",
   }).format(new Date(timestamp));
 }
@@ -152,6 +141,43 @@ function formatJoinedTime(timestamp) {
     second: "2-digit",
     timeZoneName: "short",
   }).format(new Date(timestamp));
+}
+
+async function apiRequest(path, options = {}) {
+  const response = await fetch(path, {
+    credentials: "same-origin",
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+    method: options.method || "GET",
+    body:
+      options.body !== undefined
+        ? typeof options.body === "string"
+          ? options.body
+          : JSON.stringify(options.body)
+        : undefined,
+  });
+
+  const rawText = await response.text();
+  let payload = {};
+
+  if (rawText) {
+    try {
+      payload = JSON.parse(rawText);
+    } catch (error) {
+      payload = { message: rawText };
+    }
+  }
+
+  if (!response.ok) {
+    const error = new Error(payload.message || response.statusText || "Request failed.");
+    error.data = payload;
+    error.status = response.status;
+    throw error;
+  }
+
+  return payload;
 }
 
 function setStatus(message, tone = "default") {
@@ -167,123 +193,39 @@ function clearStatus() {
   setStatus("");
 }
 
-function setFormEnabled(isEnabled) {
-  elements.statusField.disabled = !isEnabled;
-  elements.twitterHandle.disabled = !isEnabled;
-
-  if (!state.isSubmitting && elements.submitButton) {
-    elements.submitButton.disabled = !isEnabled;
-    elements.submitButton.dataset.state = isEnabled ? "idle" : "disabled";
-  }
-}
-
 function setSubmittingState(isSubmitting) {
   state.isSubmitting = isSubmitting;
 
   if (elements.submitButton) {
-    elements.submitButton.disabled = isSubmitting;
-    elements.submitButton.dataset.state = isSubmitting ? "submitting" : "idle";
-    elements.submitButton.textContent = isSubmitting ? "Saving..." : "Mark attendance";
+    elements.submitButton.disabled = isSubmitting || !state.user;
+    elements.submitButton.dataset.state = isSubmitting ? "submitting" : state.user ? "idle" : "disabled";
+    elements.submitButton.textContent = isSubmitting ? "Checking tweet..." : "Mark attendance";
+  }
+
+  if (elements.statusField) {
+    elements.statusField.disabled = isSubmitting;
+  }
+
+  if (elements.verifyAccount) {
+    elements.verifyAccount.disabled = isSubmitting;
   }
 }
 
-function getApiHeaders(extraHeaders = {}) {
-  return {
-    apikey: SUPABASE_ANON_KEY,
-    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-    "Content-Type": "application/json",
-    ...extraHeaders,
-  };
-}
+function renderVerificationState() {
+  elements.shareLink.href = state.shareUrl || DEFAULT_SHARE_URL;
 
-function getTableUrl(query = "") {
-  const querySuffix = query ? `?${query}` : "";
-  return `${SUPABASE_URL}/rest/v1/${TABLE_NAME}${querySuffix}`;
-}
-
-async function readErrorMessage(response) {
-  try {
-    const payload = await response.json();
-    return payload?.message || payload?.error_description || payload?.hint || response.statusText;
-  } catch (error) {
-    return response.statusText || "Unknown error";
-  }
-}
-
-async function fetchEntriesFromSupabase() {
-  const response = await fetch(
-    getTableUrl("select=id,handle,status,created_at&order=created_at.asc"),
-    {
-      method: "GET",
-      headers: getApiHeaders(),
-      cache: "no-store",
-    },
-  );
-
-  if (!response.ok) {
-    throw new Error(await readErrorMessage(response));
+  if (state.user) {
+    elements.verifyAccount.classList.add("is-verified");
+    elements.verifyAccount.textContent = `Verified as ${state.user.handle}`;
+    elements.helperText.textContent = `Share "${REQUIRED_TWEET_TEXT}" exactly, then mark attendance as ${state.user.handle}.`;
+  } else {
+    elements.verifyAccount.classList.remove("is-verified");
+    elements.verifyAccount.textContent = "Verify with X";
+    elements.helperText.textContent =
+      'Share the exact line, then verify with X to use your real handle.';
   }
 
-  return normalizeEntries(await response.json());
-}
-
-async function insertEntryInSupabase(entry) {
-  const response = await fetch(
-    getTableUrl("select=id,handle,status,created_at"),
-    {
-      method: "POST",
-      headers: getApiHeaders({
-        Prefer: "return=representation",
-      }),
-      body: JSON.stringify(entry),
-    },
-  );
-
-  if (!response.ok) {
-    const message = await readErrorMessage(response);
-    const error = new Error(message);
-    error.status = response.status;
-    throw error;
-  }
-
-  return normalizeEntries(await response.json())[0] || null;
-}
-
-async function ensureFixedEntriesInSupabase(entries = state.entries) {
-  if (!state.isConfigured || state.isSeedingFixedEntries) {
-    return false;
-  }
-
-  const missingFixedEntries = FIXED_ROLL_ENTRIES.filter(
-    (fixedEntry) => !entries.some((entry) => entry.handle === fixedEntry.handle),
-  );
-
-  if (!missingFixedEntries.length) {
-    return false;
-  }
-
-  state.isSeedingFixedEntries = true;
-
-  try {
-    await Promise.all(
-      missingFixedEntries.map(async (fixedEntry) => {
-        try {
-          await insertEntryInSupabase({
-            handle: fixedEntry.handle,
-            status: fixedEntry.status,
-          });
-        } catch (error) {
-          if (!/duplicate|unique|23505/i.test(error.message)) {
-            throw error;
-          }
-        }
-      }),
-    );
-
-    return true;
-  } finally {
-    state.isSeedingFixedEntries = false;
-  }
+  setSubmittingState(state.isSubmitting);
 }
 
 function renderList(entries) {
@@ -328,8 +270,7 @@ function renderList(entries) {
 }
 
 function updateSummary(entries) {
-  const countLabel = entries.length === 1 ? "1 roll" : `${entries.length} rolls`;
-  elements.attendanceCount.textContent = countLabel;
+  elements.attendanceCount.textContent = entries.length === 1 ? "1 roll" : `${entries.length} rolls`;
 }
 
 function renderCurrentEntries() {
@@ -340,7 +281,7 @@ function renderCurrentEntries() {
 
 function hydrateDate() {
   const now = new Date();
-  const { weekdayLong, fullDate } = formatDateParts(now);
+  const { fullDate, weekdayLong } = formatDateParts(now);
 
   elements.currentDay.textContent = weekdayLong;
   elements.currentDate.textContent = fullDate;
@@ -352,89 +293,126 @@ function hydrateDate() {
   }).format(now);
 }
 
+async function syncViewer() {
+  try {
+    const payload = await apiRequest("/api/auth/me");
+    state.authLoaded = true;
+    state.shareUrl = payload.shareUrl || DEFAULT_SHARE_URL;
+    state.user = payload.authenticated ? payload.user : null;
+    renderVerificationState();
+  } catch (error) {
+    state.authLoaded = true;
+    state.user = null;
+    state.shareUrl = DEFAULT_SHARE_URL;
+    renderVerificationState();
+  }
+}
+
 async function syncEntries() {
-  if (!state.isConfigured || state.isLoading) {
+  if (state.isLoading) {
     return;
   }
 
   state.isLoading = true;
 
   try {
-    let entries = await fetchEntriesFromSupabase();
-    state.entries = entries;
-
-    if (await ensureFixedEntriesInSupabase(entries)) {
-      entries = await fetchEntriesFromSupabase();
-      state.entries = entries;
-    }
-
+    const payload = await apiRequest("/api/attendance");
+    state.entries = normalizeEntries(payload.entries || []);
     renderCurrentEntries();
   } catch (error) {
-    console.error("Could not load entries:", error);
     if (!elements.formStatus.textContent) {
-      setStatus("Could not load the public directory. Check your Supabase config.");
+      setStatus("Could not load the public register right now.");
     }
   } finally {
     state.isLoading = false;
   }
 }
 
+function beginVerification() {
+  const returnTo = `${window.location.pathname}${window.location.hash || ""}`;
+  window.location.assign(`/api/auth/login?return_to=${encodeURIComponent(returnTo)}`);
+}
+
+async function handleVerifyClick() {
+  if (!state.user) {
+    beginVerification();
+    return;
+  }
+
+  try {
+    await apiRequest("/api/auth/logout", { method: "POST" });
+  } catch (error) {
+    // Ignore logout failures before restarting auth.
+  }
+
+  state.user = null;
+  renderVerificationState();
+  beginVerification();
+}
+
 async function handleSubmit(event) {
   event.preventDefault();
 
-  if (!state.isConfigured) {
-    setStatus("Supabase is not configured yet. Add your project URL and anon key.");
+  if (!state.user) {
+    beginVerification();
     return;
   }
 
-  const rawValue = elements.twitterHandle.value.trim();
-  const attendanceStatus = elements.statusField.value;
+  const status = elements.statusField.value;
 
-  if (!ALLOWED_STATUSES.has(attendanceStatus)) {
-    setStatus("Choose Present or Stuck before adding yourself.");
+  if (!ALLOWED_STATUSES.has(status)) {
+    setStatus("Choose Present or Stuck before marking attendance.");
     return;
   }
 
-  if (!HANDLE_PATTERN.test(rawValue)) {
-    setStatus("Enter a valid Twitter username to continue.");
-    return;
-  }
+  const existingEntry = getExistingDisplayEntry(state.user.handle);
 
-  const handle = formatHandle(rawValue);
-  const existingEntry = getExistingDisplayEntry(handle);
-
-  if (existingEntry) {
+  if (existingEntry && existingEntry.timestamp) {
     const rollNumber = String(existingEntry.rollNumber).padStart(2, "0");
-    setStatus(`${handle} already has roll no. ${rollNumber} as ${existingEntry.status}.`);
+    setStatus(`${state.user.handle} already has roll no. ${rollNumber} as ${existingEntry.status}.`);
     return;
   }
 
   try {
     setSubmittingState(true);
+    clearStatus();
 
-    await insertEntryInSupabase({
-      handle,
-      status: attendanceStatus,
+    const payload = await apiRequest("/api/attendance", {
+      body: {
+        status,
+      },
+      method: "POST",
     });
 
     await syncEntries();
-    setStatus(`${handle} added as ${attendanceStatus}.`, "success");
-    elements.form.reset();
-    elements.statusField.focus();
-  } catch (error) {
-    console.error("Could not save entry:", error);
+    const savedEntry = getExistingDisplayEntry(state.user.handle);
 
-    if (/duplicate|unique|23505/i.test(error.message)) {
-      await syncEntries();
-    }
-
-    const duplicateEntry = getExistingDisplayEntry(handle);
-    if (duplicateEntry) {
-      const rollNumber = String(duplicateEntry.rollNumber).padStart(2, "0");
-      setStatus(`${handle} already has roll no. ${rollNumber}.`);
+    if (payload.alreadyMarked && savedEntry) {
+      setStatus(
+        `${state.user.handle} already has roll no. ${String(savedEntry.rollNumber).padStart(2, "0")}.`,
+      );
+    } else if (savedEntry) {
+      setStatus(
+        `${state.user.handle} added at roll no. ${String(savedEntry.rollNumber).padStart(2, "0")}.`,
+        "success",
+      );
     } else {
-      setStatus(`Could not save this entry. ${error.message}`);
+      setStatus(`${state.user.handle} verified successfully.`, "success");
     }
+  } catch (error) {
+    if (error.status === 401) {
+      setStatus("Verify with X again before marking attendance.");
+      return;
+    }
+
+    if (error.status === 403 && error.data?.shareUrl) {
+      state.shareUrl = error.data.shareUrl;
+      elements.shareLink.href = state.shareUrl;
+      setStatus(`Share "${REQUIRED_TWEET_TEXT}" exactly, then try again.`);
+      return;
+    }
+
+    setStatus(error.message || "Could not mark attendance.");
   } finally {
     setSubmittingState(false);
   }
@@ -460,41 +438,54 @@ function initCreditReveal() {
 }
 
 function initPolling() {
-  if (!state.isConfigured) {
-    return;
-  }
-
   state.pollerId = window.setInterval(() => {
     if (!document.hidden) {
       syncEntries();
+      syncViewer();
     }
   }, POLLING_INTERVAL_MS);
 
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) {
       syncEntries();
+      syncViewer();
     }
   });
 }
 
-function init() {
+function consumeUrlStatusFlags() {
+  const url = new URL(window.location.href);
+  const authState = url.searchParams.get("auth");
+  const authError = url.searchParams.get("auth_error");
+
+  if (authState === "verified") {
+    setStatus("X verified. Share the exact post if needed, then mark attendance.", "success");
+    url.searchParams.delete("auth");
+  }
+
+  if (authError) {
+    setStatus("Could not complete X verification. Try again.");
+    url.searchParams.delete("auth_error");
+  }
+
+  if (authState || authError) {
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+  }
+}
+
+async function init() {
   hydrateDate();
   window.setInterval(hydrateDate, 1000);
   initCreditReveal();
-
   renderCurrentEntries();
-  setFormEnabled(state.isConfigured);
+  renderVerificationState();
+  consumeUrlStatusFlags();
 
   elements.form.addEventListener("submit", handleSubmit);
-  elements.twitterHandle.addEventListener("input", clearStatus);
   elements.statusField.addEventListener("change", clearStatus);
+  elements.verifyAccount.addEventListener("click", handleVerifyClick);
 
-  if (!state.isConfigured) {
-    setStatus("Create supabase-config.js with your project URL and anon key to make this live.");
-    return;
-  }
-
-  syncEntries();
+  await Promise.all([syncViewer(), syncEntries()]);
   initPolling();
 }
 

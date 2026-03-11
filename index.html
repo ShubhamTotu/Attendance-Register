@@ -15,10 +15,11 @@
       <header class="topbar">
         <a
           class="brand"
-          href="https://x.com/ShubhamTotu/status/2031796206800974273?s=20"
+          id="share-link"
+          href="https://twitter.com/intent/tweet?text=I%27m%20still%20Present.%20Are%20you%3F"
           target="_blank"
           rel="noreferrer noopener"
-          >Verify</a
+          >Share</a
         >
         <a class="top-cta" href="#directory">View Register</a>
       </header>
@@ -56,29 +57,21 @@
                 <option value="stuck">Stuck</option>
               </select>
 
-              <label class="sr-only" for="twitter-handle">Twitter username</label>
-              <input
-                id="twitter-handle"
-                name="twitter-handle"
-                type="text"
-                inputmode="text"
-                autocomplete="off"
-                placeholder="@yourhandle"
-                maxlength="16"
-                required
-              />
+              <button class="identity-button" id="verify-account" type="button">Verify with X</button>
 
               <button class="submit-button" type="submit">Mark attendance</button>
             </div>
           </form>
 
-          <p class="helper-text">Select a status, then sign your Twitter handle.</p>
+          <p class="helper-text" id="helper-text">
+            Share the exact line, then verify with X to use your real handle.
+          </p>
           <p class="form-status" id="form-status" aria-live="polite"></p>
         </section>
 
         <section class="directory-panel" id="directory">
           <div class="directory-header">
-            <div>
+            <div class="directory-title">
               <p class="panel-label">Attendance ledger</p>
               <h2>Register</h2>
             </div>
@@ -103,7 +96,6 @@
       </li>
     </template>
 
-    <script src="./supabase-config.js"></script>
     <script src="./script.js"></script>
   </body>
 </html>
