@@ -17,13 +17,6 @@ const elements = {
   twitterHandle: document.getElementById("twitter-handle"),
 };
 
-function getLocalDateKey(date = new Date()) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
 function loadRegister() {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -51,7 +44,7 @@ function normalizeRegisterShape(parsed) {
     .sort(([leftDate], [rightDate]) => leftDate.localeCompare(rightDate))
     .flatMap(([dateKey, entries]) =>
       entries.map((entry, index) => ({
-        handle: formatHandle(entry.handle || ""),
+        handle: entry.handle || "",
         timestamp: Number.isFinite(entry.timestamp)
           ? entry.timestamp
           : new Date(`${dateKey}T00:00:00`).getTime() + index,
@@ -67,7 +60,12 @@ function dedupeEntries(entries) {
   const seen = new Set();
 
   return entries
-    .filter((entry) => entry && typeof entry.handle === "string" && entry.handle.trim())
+    .filter(
+      (entry) =>
+        entry &&
+        typeof entry.handle === "string" &&
+        HANDLE_PATTERN.test(entry.handle.trim()),
+    )
     .map((entry) => ({
       handle: formatHandle(entry.handle),
       timestamp: Number.isFinite(entry.timestamp) ? entry.timestamp : Date.now(),
@@ -243,6 +241,7 @@ function handleSubmit(register) {
 
 function init() {
   const register = loadRegister();
+  saveRegister(register);
   hydrateDate();
   const entries = getEntries(register);
 
