@@ -16,7 +16,6 @@ const FIXED_ROLL_ENTRIES = [
 const FIXED_HANDLE_SET = new Set(FIXED_ROLL_ENTRIES.map((entry) => entry.handle));
 const RESERVED_ROLLS = new Set(FIXED_ROLL_ENTRIES.map((entry) => entry.rollNumber));
 const POLLING_INTERVAL_MS = 3000;
-const REQUIRED_TWEET_TEXT = "I'm still Present. Are you?";
 const DEFAULT_PUBLIC_SHARE_URL = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
   "I just marked my attendance. Did you?\n\nDo it at: https://timeline-attendance.vercel.app/",
 )}`;
@@ -403,11 +402,6 @@ async function handleSubmit(event) {
       return;
     }
 
-    if (error.status === 403) {
-      setStatus(`Post "${REQUIRED_TWEET_TEXT}" exactly from your verified X account, then try again.`);
-      return;
-    }
-
     setStatus(error.message || "Could not mark attendance.");
   } finally {
     setSubmittingState(false);
@@ -455,7 +449,7 @@ function consumeUrlStatusFlags() {
   const authError = url.searchParams.get("auth_error");
 
   if (authState === "verified") {
-    setStatus("X verified. Share the exact post if needed, then mark attendance.", "success");
+    setStatus("X verified. You can mark attendance now.", "success");
     url.searchParams.delete("auth");
   }
 

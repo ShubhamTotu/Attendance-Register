@@ -2,8 +2,6 @@ const crypto = require("crypto");
 
 const {
   PUBLIC_SHARE_INTENT_URL,
-  REQUIRED_TWEET_TEXT,
-  REQUIRED_TWEET_INTENT_URL,
 } = require("./constants");
 
 function assertXEnv() {
@@ -33,7 +31,7 @@ function buildAuthorizeUrl({ state, codeChallenge }) {
     code_challenge_method: "S256",
     redirect_uri: process.env.X_REDIRECT_URI,
     response_type: "code",
-    scope: "tweet.read users.read offline.access",
+    scope: "users.read",
     state,
   });
 
@@ -101,39 +99,12 @@ async function fetchAuthenticatedUser(accessToken) {
   return payload.data;
 }
 
-async function fetchRecentUserTweets({ accessToken, xUserId }) {
-  const params = new URLSearchParams({
-    exclude: "replies,retweets",
-    max_results: "100",
-    "tweet.fields": "created_at,text",
-  });
-
-  const payload = await xRequest(
-    `https://api.x.com/2/users/${encodeURIComponent(xUserId)}/tweets?${params.toString()}`,
-    accessToken,
-  );
-
-  return Array.isArray(payload.data) ? payload.data : [];
-}
-
-function normalizeTweetText(text) {
-  return String(text || "").replace(/\r\n/g, "\n").trim();
-}
-
-function hasRequiredTweet(tweets) {
-  return tweets.some((tweet) => normalizeTweetText(tweet.text) === REQUIRED_TWEET_TEXT);
-}
-
 module.exports = {
   PUBLIC_SHARE_INTENT_URL,
-  REQUIRED_TWEET_TEXT,
-  REQUIRED_TWEET_INTENT_URL,
   buildAuthorizeUrl,
   createCodeChallenge,
   createCodeVerifier,
   createState,
   exchangeCodeForToken,
   fetchAuthenticatedUser,
-  fetchRecentUserTweets,
-  hasRequiredTweet,
 };

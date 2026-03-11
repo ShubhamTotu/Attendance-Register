@@ -1,6 +1,5 @@
-const { ALLOWED_STATUSES } = require("./_lib/constants");
-const { methodNotAllowed, readJson, sendJson } = require("./_lib/http");
-const { clearSessionCookie, getSessionFromRequest } = require("./_lib/session");
+const { methodNotAllowed, sendJson } = require("./_lib/http");
+const { getSessionFromRequest } = require("./_lib/session");
 const {
   fetchAttendanceEntries,
   findAttendanceByHandle,
@@ -8,17 +7,6 @@ const {
   insertAttendanceEntry,
   updateAttendanceEntry,
 } = require("./_lib/supabase");
-const {
-  PUBLIC_SHARE_INTENT_URL,
-  REQUIRED_TWEET_TEXT,
-  REQUIRED_TWEET_INTENT_URL,
-  fetchRecentUserTweets,
-  hasRequiredTweet,
-} = require("./_lib/x");
-
-function normalizeStatus(status) {
-  return ALLOWED_STATUSES.includes(status) ? status : null;
-}
 
 function toPublicEntry(entry) {
   return {
@@ -79,40 +67,7 @@ module.exports = async function handler(req, res) {
       return;
     }
 
-    const payload = await readJson(req);
-    const status = normalizeStatus(payload.status);
-
-    if (!status) {
-      sendJson(res, 400, {
-        message: "Choose Present or Stuck before marking attendance.",
-      });
-      return;
-    }
-
-    let recentTweets = [];
-
-    try {
-      recentTweets = await fetchRecentUserTweets({
-        accessToken: session.access_token,
-        xUserId: session.x_user_id,
-      });
-    } catch (error) {
-      clearSessionCookie(res);
-      sendJson(res, 401, {
-        message: "Your X session expired. Verify again before marking attendance.",
-      });
-      return;
-    }
-
-    if (!hasRequiredTweet(recentTweets)) {
-      sendJson(res, 403, {
-        message: "Share the exact post before marking attendance.",
-        publicShareUrl: PUBLIC_SHARE_INTENT_URL,
-        requiredTweetText: REQUIRED_TWEET_TEXT,
-        requiredTweetIntentUrl: REQUIRED_TWEET_INTENT_URL,
-      });
-      return;
-    }
+    const status = "present";
 
     const existingByHandle = await findAttendanceByHandle(currentHandle);
 

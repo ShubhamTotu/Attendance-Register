@@ -3,9 +3,8 @@
 This version no longer trusts a typed `@handle`.
 
 Users must:
-1. share the exact post: `I'm still Present. Are you?`
-2. verify with X OAuth
-3. mark attendance with their verified X account
+1. verify with X OAuth
+2. mark attendance with their verified X account
 
 ## 1. Update Supabase
 
@@ -23,9 +22,7 @@ In the X Developer portal:
 - enable OAuth 2.0
 - set the callback URL to your live callback endpoint
 - use these scopes:
-  - `tweet.read`
   - `users.read`
-  - `offline.access`
 
 ### Callback URL
 
@@ -82,5 +79,5 @@ push the repo again or trigger a redeploy from Vercel.
 On the live site:
 - `Share` opens the public promo post template
 - `Verify with X` signs the user in
-- `Mark attendance` checks their recent X posts for the exact line
-- if found, the verified X handle is written to the register
+- `Mark attendance` uses the verified X session directly
+- the verified X handle is written to the register

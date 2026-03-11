@@ -1,10 +1,6 @@
 const { methodNotAllowed, sendJson } = require("../_lib/http");
 const { clearSessionCookie, getSessionFromRequest } = require("../_lib/session");
-const {
-  PUBLIC_SHARE_INTENT_URL,
-  REQUIRED_TWEET_TEXT,
-  REQUIRED_TWEET_INTENT_URL,
-} = require("../_lib/x");
+const { PUBLIC_SHARE_INTENT_URL } = require("../_lib/x");
 
 module.exports = async function handler(req, res) {
   if (req.method !== "GET") {
@@ -19,8 +15,6 @@ module.exports = async function handler(req, res) {
       sendJson(res, 200, {
         authenticated: false,
         publicShareUrl: PUBLIC_SHARE_INTENT_URL,
-        requiredTweetText: REQUIRED_TWEET_TEXT,
-        requiredTweetIntentUrl: REQUIRED_TWEET_INTENT_URL,
       });
       return;
     }
@@ -28,8 +22,6 @@ module.exports = async function handler(req, res) {
     sendJson(res, 200, {
       authenticated: true,
       publicShareUrl: PUBLIC_SHARE_INTENT_URL,
-      requiredTweetText: REQUIRED_TWEET_TEXT,
-      requiredTweetIntentUrl: REQUIRED_TWEET_INTENT_URL,
       user: {
         handle: `@${String(session.username).toLowerCase()}`,
         username: String(session.username).toLowerCase(),
@@ -42,8 +34,6 @@ module.exports = async function handler(req, res) {
       authenticated: false,
       message: "Could not read the current X session.",
       publicShareUrl: PUBLIC_SHARE_INTENT_URL,
-      requiredTweetText: REQUIRED_TWEET_TEXT,
-      requiredTweetIntentUrl: REQUIRED_TWEET_INTENT_URL,
     });
   }
 };
