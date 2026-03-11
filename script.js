@@ -217,12 +217,13 @@ function renderVerificationState() {
   if (state.user) {
     elements.verifyAccount.classList.add("is-verified");
     elements.verifyAccount.textContent = `Verified as ${state.user.handle}`;
-    elements.helperText.textContent = `Share "${REQUIRED_TWEET_TEXT}" exactly, then mark attendance as ${state.user.handle}.`;
   } else {
     elements.verifyAccount.classList.remove("is-verified");
     elements.verifyAccount.textContent = "Verify with X";
-    elements.helperText.textContent =
-      'Share the exact line, then verify with X to use your real handle.';
+  }
+
+  if (elements.helperText) {
+    elements.helperText.textContent = "";
   }
 
   setSubmittingState(state.isSubmitting);
