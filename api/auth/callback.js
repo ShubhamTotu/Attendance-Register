@@ -27,6 +27,13 @@ module.exports = async function handler(req, res) {
   clearPendingAuthCookie(res);
 
   if (!code || !state || !pendingAuth || pendingAuth.state !== state) {
+    console.error("X callback failed: invalid oauth state", {
+      hasCode: Boolean(code),
+      hasPendingAuth: Boolean(pendingAuth),
+      hasState: Boolean(state),
+      requestState: state || null,
+      storedState: pendingAuth?.state || null,
+    });
     redirect(res, "/?auth_error=invalid_oauth_state");
     return;
   }
@@ -57,6 +64,10 @@ module.exports = async function handler(req, res) {
       }),
     );
   } catch (error) {
+    console.error("X callback failed", {
+      message: error?.message || "Unknown callback error",
+      stack: error?.stack || null,
+    });
     redirect(res, "/?auth_error=x_callback_failed");
   }
 };
