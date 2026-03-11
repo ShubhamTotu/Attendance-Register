@@ -60,6 +60,14 @@ async function exchangeCodeForToken({ code, codeVerifier }) {
     body.set("client_id", process.env.X_CLIENT_ID);
   }
 
+  console.error("X token exchange config", {
+    authMode: process.env.X_CLIENT_SECRET ? "confidential" : "public",
+    clientIdLength: process.env.X_CLIENT_ID ? process.env.X_CLIENT_ID.length : 0,
+    clientIdPrefix: process.env.X_CLIENT_ID ? process.env.X_CLIENT_ID.slice(0, 6) : null,
+    hasClientSecret: Boolean(process.env.X_CLIENT_SECRET),
+    clientSecretLength: process.env.X_CLIENT_SECRET ? process.env.X_CLIENT_SECRET.length : 0,
+  });
+
   const response = await fetch("https://api.x.com/2/oauth2/token", {
     method: "POST",
     headers,
