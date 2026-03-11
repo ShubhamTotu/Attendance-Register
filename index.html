@@ -50,12 +50,7 @@
 
           <form class="composer-form" id="attendance-form">
             <div class="composer-bar" id="composer">
-              <label class="sr-only" for="attendance-status">Attendance status</label>
-              <select id="attendance-status" name="attendance-status" required>
-                <option value="">Status</option>
-                <option value="present">Present</option>
-                <option value="stuck">Stuck</option>
-              </select>
+              <input id="attendance-status" name="attendance-status" type="hidden" value="present" />
 
               <button class="identity-button" id="verify-account" type="button">Verify with X</button>
 

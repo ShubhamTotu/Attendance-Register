@@ -359,12 +359,7 @@ async function handleSubmit(event) {
     return;
   }
 
-  const status = elements.statusField.value;
-
-  if (!ALLOWED_STATUSES.has(status)) {
-    setStatus("Choose Present or Stuck before marking attendance.");
-    return;
-  }
+  const status = "present";
 
   const existingEntry = getExistingDisplayEntry(state.user.handle);
 
@@ -483,7 +478,6 @@ async function init() {
   consumeUrlStatusFlags();
 
   elements.form.addEventListener("submit", handleSubmit);
-  elements.statusField.addEventListener("change", clearStatus);
   elements.verifyAccount.addEventListener("click", handleVerifyClick);
 
   await Promise.all([syncViewer(), syncEntries()]);
