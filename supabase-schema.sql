@@ -1,9 +1,20 @@
 create table if not exists public.attendance_entries (
   id bigint generated always as identity primary key,
   handle text not null,
-  status text not null check (status in ('present', 'retarded')),
+  status text not null,
   created_at timestamptz not null default now()
 );
+
+update public.attendance_entries
+set status = 'stuck'
+where status in ('retarded', 'broken');
+
+alter table public.attendance_entries
+drop constraint if exists attendance_entries_status_check;
+
+alter table public.attendance_entries
+add constraint attendance_entries_status_check
+check (status in ('present', 'stuck'));
 
 create unique index if not exists attendance_entries_handle_lower_unique
 on public.attendance_entries ((lower(handle)));
@@ -28,5 +39,5 @@ for insert
 to anon
 with check (
   handle ~ '^@[A-Za-z0-9_]{1,15}$'
-  and status in ('present', 'retarded')
+  and status in ('present', 'stuck')
 );

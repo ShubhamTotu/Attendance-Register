@@ -1,5 +1,5 @@
 const HANDLE_PATTERN = /^@?[A-Za-z0-9_]{1,15}$/;
-const ALLOWED_STATUSES = new Set(["present", "retarded"]);
+const ALLOWED_STATUSES = new Set(["present", "stuck"]);
 const DEFAULT_TABLE_NAME = "attendance_entries";
 const DEFAULT_POLLING_INTERVAL_MS = 3000;
 const FIXED_ROLL_ENTRIES = [
@@ -56,8 +56,8 @@ function formatHandle(handle) {
 }
 
 function normalizeStatus(status) {
-  if (status === "broken") {
-    return "retarded";
+  if (status === "broken" || status === "retarded") {
+    return "stuck";
   }
 
   return ALLOWED_STATUSES.has(status) ? status : "present";
@@ -391,7 +391,7 @@ async function handleSubmit(event) {
   const attendanceStatus = elements.statusField.value;
 
   if (!ALLOWED_STATUSES.has(attendanceStatus)) {
-    setStatus("Choose Present or Retarded before adding yourself.");
+    setStatus("Choose Present or Stuck before adding yourself.");
     return;
   }
 
