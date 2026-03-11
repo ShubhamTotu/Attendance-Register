@@ -42,7 +42,6 @@ async function exchangeCodeForToken({ code, codeVerifier }) {
   assertXEnv();
 
   const body = new URLSearchParams({
-    client_id: process.env.X_CLIENT_ID,
     code,
     code_verifier: codeVerifier,
     grant_type: "authorization_code",
@@ -57,6 +56,8 @@ async function exchangeCodeForToken({ code, codeVerifier }) {
     headers.Authorization = `Basic ${Buffer.from(
       `${process.env.X_CLIENT_ID}:${process.env.X_CLIENT_SECRET}`,
     ).toString("base64")}`;
+  } else {
+    body.set("client_id", process.env.X_CLIENT_ID);
   }
 
   const response = await fetch("https://api.x.com/2/oauth2/token", {
